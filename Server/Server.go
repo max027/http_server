@@ -5,6 +5,8 @@ import (
 	"bytes"
 	"fmt"
 	"net"
+	"os"
+	"strings"
 )
 
 type Server struct {
@@ -19,6 +21,7 @@ func (ser *Server) Start() {
 	ser.status_code = map[int]string{
 		200: "OK",
 		404: "Not Found",
+		501: "Not Implemented",
 	}
 	ser.headers = map[string]string{
 		"Server":       "CrudeServer",
@@ -50,7 +53,7 @@ func (ser *Server) response_line(status_code int) []byte {
 }
 
 func (ser *Server) response_header() []byte {
-	//extra header
+	// extra header
 	header := ""
 	for key, value := range ser.headers {
 		header += fmt.Sprintf("%s: %s\r\n", key, value)
@@ -69,21 +72,65 @@ func (ser *Server) Handel_request(conn net.Conn) {
 	}
 	fmt.Printf("recieved message:%s", message)
 
+	parser := &Parser{}
+	parser.parse(message)
+
+	var response_body []byte
+	if parser.method == "GET" {
+		response_body = ser.handel_GET(parser)
+	}
+
 	response_line := ser.response_line(200)
 
 	header := ser.response_header()
 
 	blank_line := []byte("\r\n")
 
-	response_body := []byte(`<html>
-	<body>
-	<h1>Message Recieved</h1>
-	</body>
-	</html>`)
-
 	_, err = conn.Write(bytes.Join([][]byte{response_line, header, blank_line, response_body}, nil))
 	if err != nil {
 		fmt.Println("Error Writing")
 	}
+}
 
+func (ser *Server) handel_GET(par *Parser) []byte {
+	filename := strings.Trim(par.uri, "/")
+	// problem
+	path, err := os.Stat(filename)
+	fmt.Println("path:", path)
+	if err != nil {
+		response_line := ser.response_line(404)
+		response_header := ser.response_header()
+		response_body := []byte("<h1>File not found</h1>")
+		blank_line := []byte("\r\n")
+		return bytes.Join([][]byte{response_line, response_header, blank_line, response_body}, nil)
+	}
+
+	response_line := ser.response_line(200)
+	response_header := ser.response_header()
+	blank_line := []byte("\r\n")
+	response_body, err := readFileAsBytes(par.uri)
+	if err != nil {
+		fmt.Println("error reading file")
+	}
+
+	return bytes.Join([][]byte{response_line, response_header, blank_line, response_body}, nil)
+}
+
+func readFileAsBytes(path string) ([]byte, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+	return data, nil
+}
+
+func (ser *Server) handel_501() []byte {
+	response_line := ser.response_line(501)
+
+	response_header := ser.response_header()
+	blank_line := []byte("\r\n")
+
+	response_body := []byte("<h1>501 not Implemented</h1>")
+
+	return bytes.Join([][]byte{response_line, response_header, blank_line, response_body}, nil)
 }
