@@ -10,29 +10,16 @@ import (
 )
 
 type Server struct {
-	Host        string
-	Port        string
-	status_code map[int]string
-	headers     map[string]string
+	Host string
+	Port string
 }
 
-func (ser *Server) Start() {
-	// move to seprate file
-	ser.status_code = map[int]string{
-		200: "OK",
-		204: "No Content",
-		404: "Not Found",
-		501: "Not Implemented",
-		500: "Internal Server Error",
-		400: "Bad Request",
-		201: "Created",
-	}
-	ser.headers = map[string]string{
-		"Server":         "CrudeServer",
-		"Content-Type":   "text/html",
-		"Content-Length": "0",
-	}
+var blank_line []byte = []byte("\r\n")
 
+func (ser *Server) Start() {
+	ser.Host = "tcp"
+	ser.Port = ":8888"
+	// move to seprate file
 	listner, err := net.Listen(ser.Host, ser.Port)
 	if err != nil {
 		fmt.Println("Error occure while starting server:", err)
@@ -50,17 +37,17 @@ func (ser *Server) Start() {
 	}
 }
 
-func (ser *Server) response_line(status_code int) []byte {
-	reason := ser.status_code[status_code]
+func (ser *Server) response_line(status int) []byte {
+	reason := status_code[status]
 
-	line := []byte(fmt.Sprintf("HTTP/1.1 %d %s\r\n", status_code, reason))
+	line := []byte(fmt.Sprintf("HTTP/1.1 %d %s\r\n", status, reason))
 	return line
 }
 
 func (ser *Server) response_header() []byte {
 	// extra header
 	header := ""
-	for key, value := range ser.headers {
+	for key, value := range headers {
 		header += fmt.Sprintf("%s: %s\r\n", key, value)
 	}
 
@@ -97,13 +84,11 @@ func (ser *Server) handel_GET(par *parser) []byte {
 		response_line := ser.response_line(404)
 		response_header := ser.response_header()
 		response_body := []byte("<h1>File not found</h1>")
-		blank_line := []byte("\r\n")
 		return bytes.Join([][]byte{response_line, response_header, blank_line, response_body}, nil)
 	}
 
 	response_line := ser.response_line(200)
 	response_header := ser.response_header()
-	blank_line := []byte("\r\n")
 	response_body, err := readFileAsBytes(fmt.Sprintf("C:\\Users\\saurabh\\programming\\golang\\http_server\\Server\\%s", filename))
 	if err != nil {
 		fmt.Println("error reading file")
@@ -125,7 +110,6 @@ func (ser *Server) handel_POST() []byte {
 	response_line := ser.response_line(201)
 	response_header := ser.response_header()
 	response_body := []byte("resource created")
-	blank_line := []byte("\r\n")
 	response = bytes.Join([][]byte{response_line, response_header, blank_line, response_body}, nil)
 
 	return response
@@ -135,7 +119,6 @@ func (ser *Server) handel_501() []byte {
 	response_line := ser.response_line(501)
 
 	response_header := ser.response_header()
-	blank_line := []byte("\r\n")
 
 	response_body := []byte("<h1>501 not Implemented</h1>")
 
@@ -146,7 +129,6 @@ func (ser *Server) handel_DELETE(par *parser) []byte {
 	filename := par.uri
 	_, err := os.Stat(fmt.Sprintf("C:\\Users\\saurabh\\programming\\golang\\http_server\\Server\\%s", filename))
 	response_header := ser.response_header()
-	blank_line := []byte("\r\n")
 	if err != nil {
 		fmt.Println("Resource Not found")
 		response_body := []byte("<h1>File not found</h1>")
@@ -167,7 +149,6 @@ func (ser *Server) handel_PUT(par *parser) []byte {
 	filename := par.uri
 	_, err := os.Stat(fmt.Sprintf("C:\\Users\\saurabh\\programming\\golang\\http_server\\Server\\%s", filename))
 	response_header := ser.response_header()
-	blank_line := []byte("\r\n")
 	if err != nil {
 		fmt.Println("Resource Not found")
 		response_body := []byte("<h1>File not found</h1>")
