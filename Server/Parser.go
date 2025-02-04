@@ -3,7 +3,6 @@ package server
 import (
 	"bufio"
 	"bytes"
-	"fmt"
 	"log/slog"
 	"strconv"
 	"strings"
@@ -71,5 +70,4 @@ func (par *parser) parse(reader *bufio.Reader) {
 	} else {
 		par.body = ""
 	}
-	fmt.Println(par.body)
 }

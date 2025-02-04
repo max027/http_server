@@ -5,8 +5,10 @@ import (
 	"bytes"
 	"fmt"
 	"log/slog"
+	"mime"
 	"net"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -90,6 +92,7 @@ func (ser *Server) Handel_request(conn net.Conn) {
 func (ser *Server) handel_GET(par *parser) []byte {
 	filename := strings.Trim(par.uri, "/")
 	_, err := os.Stat(fmt.Sprintf("%s%s", os.Getenv("FILE_PATH"), filename))
+
 	if err != nil {
 		response_line := ser.response_line(404)
 		response_header := ser.response_header()
@@ -97,14 +100,23 @@ func (ser *Server) handel_GET(par *parser) []byte {
 		slog.Error("File Not found", "Name", filename)
 		return bytes.Join([][]byte{response_line, response_header, blank_line, response_body}, nil)
 	}
-	response_line := ser.response_line(200)
-	response_header := ser.response_header()
+
 	response_body, err := readFileAsBytes(fmt.Sprintf("%s%s", os.Getenv("FILE_PATH"), filename))
 	if err != nil {
 		slog.Error("error reading file", "Name", filename)
+		response_line := ser.response_line(500)
+		response_header := ser.response_header()
+		return bytes.Join([][]byte{response_line, response_header, blank_line}, nil)
 	}
+
+	response_line := ser.response_line(200)
+	response_header := ser.response_header()
+
+	content := mime.TypeByExtension(filepath.Ext(filename))
+	contentType := strings.Split(content, ";")
 	contentLength := len(response_body)
 	headers["Content-Length"] = strconv.Itoa(contentLength)
+	headers["Content-Type"] = strings.TrimSpace(contentType[0])
 	return bytes.Join([][]byte{response_line, response_header, blank_line, response_body}, nil)
 }
 
