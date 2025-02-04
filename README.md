@@ -7,6 +7,7 @@ High-performance web server capable of handling multiple client requests simulta
 
 - Concurrency with Goroutines
 - Efficient Request Handling
+- Logging
 - Lightweight and Fast
 ## 🚀 About Me
 I'm a passionate student currently diving into the world of web development. I enjoy learning how to create responsive, user-friendly websites and applications. From mastering HTML, CSS, and JavaScript to exploring frameworks and backend technologies,

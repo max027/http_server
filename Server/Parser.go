@@ -3,7 +3,7 @@ package server
 import (
 	"bufio"
 	"bytes"
-	"fmt"
+	"log/slog"
 	"strconv"
 	"strings"
 )
@@ -19,7 +19,7 @@ type parser struct {
 func (par *parser) parse(reader *bufio.Reader) {
 	data, err := reader.ReadString('\n')
 	if err != nil {
-		fmt.Println("Error Reading:", err)
+		slog.Error("Error Reading", "Err", err)
 	}
 	lines := strings.Split(data, "\r\n")
 
@@ -42,7 +42,7 @@ func (par *parser) parse(reader *bufio.Reader) {
 	for {
 		line, err := reader.ReadString('\n')
 		if err != nil {
-			fmt.Println("Error Reading header:", err)
+			slog.Error("Error Reading header", "Err", err)
 		}
 		trimmed_line := strings.Trim(line, "\r\n")
 
@@ -63,12 +63,11 @@ func (par *parser) parse(reader *bufio.Reader) {
 		temp := make([]byte, contentLength)
 		_, err := reader.Read(temp)
 		if err != nil {
-			fmt.Println("Error Reading body:", err)
+			slog.Error("Error Reading body", "Err", err)
 			return
 		}
 		par.body = string(temp)
 	} else {
 		par.body = ""
 	}
-	fmt.Println(par.body)
 }

@@ -10,7 +10,6 @@ var status_code map[int]string = map[int]string{
 	201: "Created",
 }
 var headers map[string]string = map[string]string{
-	"Server":         "CrudeServer",
-	"Content-Type":   "text/html",
-	"Content-Length": "0",
+	"Server":       "CrudeServer",
+	"Content-Type": "text/html",
 }
