@@ -7,7 +7,10 @@ import (
 	"log/slog"
 	"net"
 	"os"
+	"strconv"
 	"strings"
+
+	"github.com/joho/godotenv"
 )
 
 type Server struct {
@@ -20,6 +23,12 @@ var blank_line []byte = []byte("\r\n")
 func (ser *Server) Start() {
 	ser.Host = "tcp"
 	ser.Port = ":8888"
+	err := godotenv.Load()
+	if err != nil {
+		slog.Error("Error loading .env ", "ERR", err)
+		return
+	}
+
 	listner, err := net.Listen(ser.Host, ser.Port)
 	if err != nil {
 		slog.Error("Error occure while starting server", "Err:", err)
@@ -47,7 +56,6 @@ func (ser *Server) response_line(status int) []byte {
 }
 
 func (ser *Server) response_header() []byte {
-	// extra header
 	header := ""
 	for key, value := range headers {
 		header += fmt.Sprintf("%s: %s\r\n", key, value)
@@ -64,15 +72,16 @@ func (ser *Server) Handel_request(conn net.Conn) {
 	parser.parse(reader)
 	slog.Info(parser.method, "Path", parser.uri)
 	var response []byte
-	if parser.method == "GET" {
+	switch parser.method {
+	case "GET":
 		response = ser.handel_GET(parser)
-	} else if parser.method == "POST" {
+	case "POST":
 		response = ser.handel_POST(parser)
-	} else if parser.method == "DELETE" {
-		response = ser.handel_DELETE(parser)
-	} else if parser.method == "PUT" {
+	case "PUT":
 		response = ser.handel_PUT(parser)
-	} else {
+	case "DELETE":
+		response = ser.handel_DELETE(parser)
+	default:
 		response = ser.handel_501()
 	}
 	conn.Write(response)
@@ -80,7 +89,7 @@ func (ser *Server) Handel_request(conn net.Conn) {
 
 func (ser *Server) handel_GET(par *parser) []byte {
 	filename := strings.Trim(par.uri, "/")
-	_, err := os.Stat(fmt.Sprintf("C:\\Users\\saurabh\\programming\\golang\\http_server\\Server\\%s", filename))
+	_, err := os.Stat(fmt.Sprintf("%s%s", os.Getenv("FILE_PATH"), filename))
 	if err != nil {
 		response_line := ser.response_line(404)
 		response_header := ser.response_header()
@@ -88,14 +97,14 @@ func (ser *Server) handel_GET(par *parser) []byte {
 		slog.Error("File Not found", "Name", filename)
 		return bytes.Join([][]byte{response_line, response_header, blank_line, response_body}, nil)
 	}
-
 	response_line := ser.response_line(200)
 	response_header := ser.response_header()
-	response_body, err := readFileAsBytes(fmt.Sprintf("C:\\Users\\saurabh\\programming\\golang\\http_server\\Server\\%s", filename))
+	response_body, err := readFileAsBytes(fmt.Sprintf("%s%s", os.Getenv("FILE_PATH"), filename))
 	if err != nil {
 		slog.Error("error reading file", "Name", filename)
 	}
-
+	contentLength := len(response_body)
+	headers["Content-Length"] = strconv.Itoa(contentLength)
 	return bytes.Join([][]byte{response_line, response_header, blank_line, response_body}, nil)
 }
 
@@ -131,7 +140,7 @@ func (ser *Server) handel_501() []byte {
 
 func (ser *Server) handel_DELETE(par *parser) []byte {
 	filename := par.uri
-	_, err := os.Stat(fmt.Sprintf("C:\\Users\\saurabh\\programming\\golang\\http_server\\Server\\%s", filename))
+	_, err := os.Stat(fmt.Sprintf("%s%s", os.Getenv("FILE_PATH"), filename))
 	response_header := ser.response_header()
 	if err != nil {
 		response_body := []byte("<h1>File not found</h1>")
@@ -140,7 +149,7 @@ func (ser *Server) handel_DELETE(par *parser) []byte {
 		return bytes.Join([][]byte{response_line, response_header, blank_line, response_body}, nil)
 	}
 	response_line := ser.response_line(204)
-	err2 := os.Remove(fmt.Sprintf("C:\\Users\\saurabh\\programming\\golang\\http_server\\Server\\%s", filename))
+	err2 := os.Remove(fmt.Sprintf("%s%s", os.Getenv("FILE_PATH"), filename))
 	if err2 != nil {
 		response_line := ser.response_line(500)
 		response_body := []byte("<h1>Internal Server Error</h1>")
@@ -153,7 +162,7 @@ func (ser *Server) handel_DELETE(par *parser) []byte {
 
 func (ser *Server) handel_PUT(par *parser) []byte {
 	filename := par.uri
-	_, err := os.Stat(fmt.Sprintf("C:\\Users\\saurabh\\programming\\golang\\http_server\\Server\\%s", filename))
+	_, err := os.Stat(fmt.Sprintf("%s%s", os.Getenv("FILE_PATH"), filename))
 	response_header := ser.response_header()
 	if err != nil {
 		response_body := []byte("<h1>File not found</h1>")
