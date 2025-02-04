@@ -8,7 +8,6 @@ import (
 	"net"
 	"os"
 	"strings"
-	"sync"
 )
 
 type Server struct {
@@ -17,7 +16,6 @@ type Server struct {
 }
 
 var blank_line []byte = []byte("\r\n")
-var wg sync.WaitGroup
 
 func (ser *Server) Start() {
 	ser.Host = "tcp"
@@ -27,17 +25,17 @@ func (ser *Server) Start() {
 		slog.Error("Error occure while starting server", "Err:", err)
 		return
 	}
+
 	defer listner.Close()
+
 	slog.Info("Server is Listening", "port", "8888")
 	for {
 		conn, err := listner.Accept()
 		if err != nil {
-			slog.Error("Error accepting connection", "Err", err)
+			slog.Error("Error accepting connection", "ERR", err)
 			continue
 		}
-		wg.Add(1)
 		go ser.Handel_request(conn)
-		wg.Wait()
 	}
 }
 
@@ -60,7 +58,6 @@ func (ser *Server) response_header() []byte {
 
 func (ser *Server) Handel_request(conn net.Conn) {
 	defer conn.Close()
-	defer wg.Done()
 	reader := bufio.NewReader(conn)
 
 	parser := &parser{}
