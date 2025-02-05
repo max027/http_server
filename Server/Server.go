@@ -3,14 +3,18 @@ package server
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"fmt"
 	"log/slog"
 	"mime"
 	"net"
 	"os"
+	"os/signal"
 	"path/filepath"
 	"strconv"
 	"strings"
+	"syscall"
+	"time"
 
 	"github.com/joho/godotenv"
 )
@@ -38,16 +42,38 @@ func (ser *Server) Start() {
 	}
 
 	defer listner.Close()
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
 
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
+
+	go func() {
+		<-sigChan
+		slog.Warn("Shutting down server...")
+		cancel()
+	}()
 	slog.Info("Server is Listening", "port", "8888")
 	for {
-		conn, err := listner.Accept()
-		if err != nil {
-			slog.Error("Error accepting connection", "ERR", err)
-			continue
+		select {
+		case <-ctx.Done():
+			slog.Warn("Server shutting down")
+			return
+		default:
+			conn, err := listner.Accept()
+			if err != nil {
+				if neterr, ok := err.(net.Error); ok && neterr.Timeout() {
+					slog.Warn("Temporary accept error")
+					time.Sleep(3 * time.Second)
+					continue
+				}
+				slog.Error("Error accepting connection", "ERR", err)
+				continue
+			}
+			go ser.Handel_request(conn)
 		}
-		go ser.Handel_request(conn)
 	}
+
 }
 
 func (ser *Server) response_line(status int) []byte {
